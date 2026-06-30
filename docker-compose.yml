@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: hermes-db
+    environment:
+      POSTGRES_USER: hermes_user
+      POSTGRES_PASSWORD: secret_pass
+      POSTGRES_DB: hermes_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
