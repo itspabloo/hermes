@@ -81,3 +81,64 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	}
 	c.JSON(http.StatusNoContent, nil)
 }
+
+func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	id := c.Param("id")
+	var oldTask models.Task
+	err := h.DB.Preload("TestCases").First(&oldTask, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task"})
+		return
+	}
+	var newTask models.Task
+	err = c.ShouldBindJSON(&newTask)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input format" + err.Error()})
+		return
+	}
+	tx := h.DB.Begin()
+	oldTask.Title = newTask.Title
+	oldTask.Statements = newTask.Statements
+	oldTask.TimeLimit = newTask.TimeLimit
+	oldTask.MemoryLimit = newTask.MemoryLimit
+	if newTask.TestCases != nil {
+		err = tx.Where("task_id = ?", oldTask.ID).Delete(&models.TestCase{}).Error
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete old test cases"})
+			return
+		}
+		for i := range newTask.TestCases {
+			newTask.TestCases[i].TaskID = oldTask.ID
+		}
+		err = tx.Create(&newTask.TestCases).Error
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create new test cases"})
+			return
+		}
+		oldTask.TestCases = newTask.TestCases
+	}
+	err = tx.Save(&oldTask).Error
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
+		return
+	}
+	err = tx.Commit().Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+	var updatedTask models.Task
+	err = h.DB.Preload("TestCases").First(&updatedTask, id).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated task"})
+		return
+	}
+	c.JSON(http.StatusOK, updatedTask)
+}

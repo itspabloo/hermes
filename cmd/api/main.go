@@ -27,6 +27,7 @@ func main() {
 		v1.GET("/tasks", taskHandler.GetTasks)
 		v1.GET("/tasks/:id", taskHandler.GetTask)
 		v1.DELETE("/tasks/:id", taskHandler.DeleteTask)
+		v1.PUT("/tasks/:id", taskHandler.UpdateTask)
 	}
 	log.Println("Starting Hermes API on port 8080...")
 	err := r.Run(":8080")
