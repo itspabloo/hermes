@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/itspabloo/hermes/internal/models"
@@ -39,4 +40,19 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, tasks)
+}
+
+func (h *TaskHandler) GetTask(c *gin.Context) {
+	id := c.Param("id")
+	var task models.Task
+	err := h.DB.Preload("TestCases").First(&task, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task"})
+		return
+	}
+	c.JSON(http.StatusOK, task)
 }
