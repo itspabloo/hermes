@@ -56,3 +56,28 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, task)
 }
+
+func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	id := c.Param("id")
+	var task models.Task
+	err := h.DB.Preload("TestCases").First(&task, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task"})
+		return
+	}
+	err = h.DB.Where("task_id = ?", id).Delete(&models.TestCase{}).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete test cases"})
+		return
+	}
+	err = h.DB.Delete(&task).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
+		return
+	}
+	c.JSON(http.StatusNoContent, nil)
+}

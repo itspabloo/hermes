@@ -15,7 +15,7 @@ type Task struct {
 
 type TestCase struct {
 	ID uint `json:"id" gorm:"primaryKey"`
-	TaskID uint `json:"task_id"`
+	TaskID uint `json:"task_id" gorm:"index;constraint:OnDelete:CASCADE;"`
 	InputData string `json:"input_data" gorm:"type:text"`
 	ExpectedOutput string `json:"expected_output" gorm:"type:text"`
 	IsHidden bool `json:"is_hidden"`
