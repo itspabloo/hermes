@@ -13,6 +13,7 @@ func main() {
 	db := repository.InitDB()
 
 	taskHandler := handlers.NewTaskHandler(db)
+	submissionHandler := handlers.NewSubmissionHandler(db)
 	
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
@@ -28,6 +29,9 @@ func main() {
 		v1.GET("/tasks/:id", taskHandler.GetTask)
 		v1.DELETE("/tasks/:id", taskHandler.DeleteTask)
 		v1.PUT("/tasks/:id", taskHandler.UpdateTask)
+
+		v1.POST("/submissions", submissionHandler.CreateSubmission)
+		v1.GET("/submissions/:id", submissionHandler.GetSubmissiom)
 	}
 	log.Println("Starting Hermes API on port 8080...")
 	err := r.Run(":8080")
