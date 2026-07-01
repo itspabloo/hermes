@@ -1,20 +1,27 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/itspabloo/hermes/internal/models"
+	"github.com/itspabloo/hermes/internal/queue"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"gorm.io/gorm"
 )
 
 type SubmissionHandler struct {
 	DB *gorm.DB
+	MQ *queue.RabbitMQ
 }
 
-func NewSubmissionHandler(db *gorm.DB) *SubmissionHandler {
-	return &SubmissionHandler{DB: db}
+func NewSubmissionHandler(db *gorm.DB, mq *queue.RabbitMQ) *SubmissionHandler {
+	return &SubmissionHandler{DB: db, MQ : mq}
 }
 
 func (h *SubmissionHandler) CreateSubmission(c *gin.Context) {
@@ -39,7 +46,21 @@ func (h *SubmissionHandler) CreateSubmission(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save submission"})
 		return
 	}
-	// TODO: отправка submission в очередь
+	msgBody, _ := json.Marshal(map[string]uint{"submission_id": submission.ID})
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+	err = h.MQ.Channel.PublishWithContext(ctx,
+		"",
+		"submissions_queue",
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body: msgBody,
+		})
+	if err != nil {
+		log.Printf("Failed to publish a message to queue: %v", err)
+	}
 	c.JSON(http.StatusCreated, submission)
 }
 
